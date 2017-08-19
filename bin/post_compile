@@ -1,4 +1,4 @@
 #!/bin/bash
 export PATH=/app/.heroku/node/bin:$PATH
-yarn install --production=true
+yarn install --production=false
 webpack
