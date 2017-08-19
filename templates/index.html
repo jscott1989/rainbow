@@ -1,0 +1,26 @@
+{% load staticfiles %}
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Rainbow</title>
+    <script type="text/javascript" src="{% static "phaser-ce/build/phaser.js" %}"></script>
+    <script type="text/javascript" src="{% static "bundle.js" %}"></script>
+    <link rel="stylesheet" type="text/css" href="{% static "style.css" %}">
+</head>
+<body>
+    <div id="container">
+        <div id="game">
+        </div>
+        <div id="menu">
+            <div id="menu-container">
+                <div id="debug-log">
+                    <strong>Debug</strong>
+                    <ul>
+                        <li>LALALA</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
