@@ -3,8 +3,6 @@
 <html>
 <head>
     <title>Rainbow</title>
-    <script type="text/javascript" src="{% static "phaser-ce/build/phaser.js" %}"></script>
-    <script type="text/javascript" src="{% static "bundle.js" %}"></script>
     <link rel="stylesheet" type="text/css" href="{% static "style.css" %}">
 </head>
 <body>
@@ -16,11 +14,19 @@
                 <div id="debug-log">
                     <strong>Debug</strong>
                     <ul>
-                        <li>LALALA</li>
                     </ul>
                 </div>
             </div>
         </div>
     </div>
+    <div id="chat-overlay" class="overlay">
+        <form>
+            <input type="text" placeholder="Enter message...">
+        </form>
+    </div>
+    <script type="text/javascript" src="{% static "jquery/dist/jquery.min.js" %}"></script>
+    <script type="text/javascript" src="{% static "phaser-ce/build/phaser.js" %}"></script>
+    <script type="text/javascript" src="{% static "channels/js/websocketbridge.js" %}"></script>
+    <script type="text/javascript" src="{% static "bundle.js" %}"></script>
 </body>
 </html>

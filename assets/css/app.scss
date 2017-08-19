@@ -32,3 +32,24 @@ body {
 #menu-container {
     margin: 4px;
 }
+
+.overlay {
+    display: none;
+    width: 600px;
+    height: 60px;
+    background: orange;
+
+    position: absolute;
+    margin: auto;
+    top: 0; left: 0; bottom: 0; right: 0;
+
+    input {
+        width: 550px;
+        font-size: 2em;
+        font-family: 'Press Start 2P', cursive;
+        position: absolute;
+        margin-left: 25px;
+        margin-top: 13px;
+        border: none;
+    }
+}
