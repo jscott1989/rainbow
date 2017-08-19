@@ -8,14 +8,12 @@ var game = new Phaser.Game(
 );
 
 function preload() {
-    // game.load.image('einstein', 'assets/pics/ra_einstein.png');
+    game.load.image('sprite', 'static/img/test-sprite.png');
 }
 
 function create() {
 
-    // var s = game.add.sprite(80, 0, 'einstein');
-
-    // s.rotation = 0.14;
+    var s = game.add.sprite(80, 0, 'sprite');
 
     setupKeyBindings();
 }
@@ -25,8 +23,6 @@ function setupKeyBindings() {
     talkKey = game.input.keyboard.addKey(Phaser.Keyboard.SPACEBAR);
 
     talkKey.onDown.add(() => {
-        console.log("PRessed");
-
         $("#chat-overlay").show();
         $("#chat-overlay input").focus();
         removeKeyBindings();
