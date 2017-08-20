@@ -3,7 +3,7 @@ from django.db import models
 
 class Player(models.Model):
     player_id = models.CharField(max_length=255)
-    enabled = models.BooleanField()
+    enabled = models.BooleanField(default=True)
     x = models.IntegerField()
     y = models.IntegerField()
 
