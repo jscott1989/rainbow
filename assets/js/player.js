@@ -1,8 +1,8 @@
 class Player {
-    constructor(game) {
+    constructor(game, x, y) {
         this.game = game;
         this.tween = null;
-        this.sprite = game.add.sprite(100, 100, 'guest-sprite');
+        this.sprite = game.add.sprite(x, y, 'guest-sprite');
         this.sprite.anchor.setTo(.5,.5);
         this.sprite.animations.add('idle', [1], 1, true);
         this.sprite.animations.add('walk', [2,3,4,5,6,7], 6, true);
@@ -28,6 +28,11 @@ class Player {
         this.tween.onComplete.add(() => {
             this.sprite.animations.play('idle');
         });
+    }
+
+    destroy() {
+        console.log("Destroying ", this.sprite);
+        this.sprite.destroy();
     }
 }
 

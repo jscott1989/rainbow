@@ -81,7 +81,7 @@ WSGI_APPLICATION = 'rainbow.wsgi.application'
 
 DATABASES = {
     'default': dj_database_url.config(
-        default="sqlite://db.sqlite3", conn_max_age=500)
+        default="postgresql://localhost/rainbow", conn_max_age=500)
 }
 
 
@@ -137,11 +137,11 @@ STATICFILES_DIRS = [
 
 CHANNEL_LAYERS = {
     "default": {
-        # "BACKEND": "asgiref.inmemory.ChannelLayer",
-        "BACKEND": "asgi_redis.RedisChannelLayer",
-        "CONFIG": {
-            "hosts": [os.environ.get('REDIS_URL', 'redis://localhost:6379')],
-        },
+        "BACKEND": "asgiref.inmemory.ChannelLayer",
+        # "BACKEND": "asgi_redis.RedisChannelLayer",
+        # "CONFIG": {
+        #     "hosts": [os.environ.get('REDIS_URL', 'redis://localhost:6379')],
+        # },
         "ROUTING": "rainbow.routing.channel_routing",
     },
 }
