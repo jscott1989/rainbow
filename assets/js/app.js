@@ -31,7 +31,7 @@ function preload() {
     game.stage.disableVisibilityChange = true;
     
     // 32x48
-    game.load.spritesheet('guest-sprite', 'static/img/guest-sprite.png', 32, 48, 7);
+    game.load.spritesheet('guest-sprite', 'static/img/guest-sprite.png', 32, 64, 7);
 }
 
 function create() {
