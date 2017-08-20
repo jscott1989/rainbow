@@ -1,4 +1,7 @@
-var talkKey; 
+import Player from "./player";
+
+var talkKey;
+var player;
 
 var game = new Phaser.Game(
     800, 600,
@@ -8,13 +11,12 @@ var game = new Phaser.Game(
 );
 
 function preload() {
-    game.load.image('sprite', 'static/img/test-sprite.png');
+    // 32x48
+    game.load.spritesheet('guest-sprite', 'static/img/guest-sprite.png', 32, 48, 7);
 }
 
 function create() {
-
-    var s = game.add.sprite(80, 0, 'sprite');
-
+    player = new Player(game);
     setupKeyBindings();
 }
 
@@ -34,8 +36,10 @@ function removeKeyBindings() {
 }
 
 
-
 function update() {
+    if (game.input.activePointer.isDown) {
+        player.moveTo(game.input.x, game.input.y);
+    }
 }
 
 
