@@ -30,8 +30,8 @@ def ws_connect(message, id):
     player, created = Player.objects.get_or_create(
         player_id=id,
         defaults={
-            "x": 100,
-            "y": 100
+            "x": 279,
+            "y": 310
         }
     )
 

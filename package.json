@@ -22,6 +22,7 @@
     "build": "webpack"
   },
   "dependencies": {
+    "easystarjs": "^0.4.1",
     "jquery": "^3.2.1",
     "phaser-ce": "2.8.3"
   }
