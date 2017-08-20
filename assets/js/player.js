@@ -9,6 +9,19 @@ class Player {
         this.sprite.animations.play('idle');
     }
 
+    update() {
+        if (this.chatText != null) {
+            this.chatTextTimeout -= this.game.time.elapsed;
+            if (this.chatTextTimeout <= 0) {
+                this.chatText.destroy();
+                this.chatText = null;
+            } else {
+                this.chatText.x = this.sprite.x;
+                this.chatText.y = this.sprite.y - 30;
+            }
+        }
+    }
+
     moveTo(x, y) {
         var distance = Math.sqrt(Math.pow(this.sprite.x - x, 2) + Math.pow(this.sprite.y - y, 2));
         var time = distance * 10;
@@ -33,6 +46,22 @@ class Player {
     destroy() {
         console.log("Destroying ", this.sprite);
         this.sprite.destroy();
+    }
+
+    chat(text) {
+        if (this.chatText != null) {
+            this.chatText.destroy();
+        }
+
+        this.chatText = this.game.add.text(
+            this.sprite.x,
+            this.sprite.y - 30, text, {
+                font: "18px Press Start 2P",
+                fill: "#ffffff",
+                align: "center"
+            });
+        this.chatText.anchor.setTo(0.5);
+        this.chatTextTimeout = 3000;
     }
 }
 

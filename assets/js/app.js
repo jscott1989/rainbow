@@ -41,7 +41,7 @@ function create() {
     webSocketBridge.connect('/ws/' + id);
     webSocketBridge.listen((action) => {
         if (action.command == "chat") {
-            $("#debug-log > ul").append($("<li>" + action["text"] + "</li>"));
+            players[action.player.id].chat(action.text);
         } else if (action.command == "add_player") {
             if (players[action.player.id] != null) {
                 players[action.player.id].destroy();
@@ -75,7 +75,10 @@ function removeKeyBindings() {
 function update() {
     if (game.input.activePointer.isDown) {
         webSocketBridge.send({command: 'move', x: game.input.x, y: game.input.y})
-        // players[id].moveTo(game.input.x, game.input.y);
+    }
+
+    for (var player in players) {
+        players[player].update();
     }
 }
 
