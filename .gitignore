@@ -4,3 +4,6 @@
 /db.sqlite3
 /ve
 .DS_Store
+/.sync/StreamsList
+/.sync/ID
+/.sync

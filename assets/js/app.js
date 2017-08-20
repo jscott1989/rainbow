@@ -69,7 +69,7 @@ function preload() {
     game.load.image('background', 'static/img/test-background.png');
     game.load.image('foreground', 'static/img/test-foreground.png');
     game.load.image('background-mask', 'static/img/test-background-mask.png');
-    game.load.spritesheet('guest-sprite', 'static/img/guest-sprite.png', 32, 64, 7);
+    game.load.spritesheet('guest-sprite', 'static/img/guest-sprite.png', 32, 64);
 }
 
 function create() {
