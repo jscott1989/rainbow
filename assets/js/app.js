@@ -1,5 +1,8 @@
 import Player from "./player";
 
+const ROOMS = ["lobby", "room1"];
+const ITEMS = ["door1"];
+
 
 // We won't have enough players for uuid uniqueness to matter - so using this
 // poor quality version
@@ -51,10 +54,12 @@ if (id == null) {
 
 const webSocketBridge = new channels.WebSocketBridge();
 var talkKey;
+var hoveredItem = null;
+var clickedItem = null;
 var players = {};
 var easystar = new EasyStar.js();
-var map;
 var sprites;
+var items;
 
 var game = new Phaser.Game(
     800, 600,
@@ -66,23 +71,36 @@ var game = new Phaser.Game(
 function preload() {
     game.stage.disableVisibilityChange = true;
 
-    game.load.image('background', 'static/img/test-background.png');
-    game.load.image('foreground', 'static/img/test-foreground.png');
-    game.load.image('background-mask', 'static/img/test-background-mask.png');
+    ROOMS.forEach((room) => {
+        game.load.image(room + '-background', 'static/img/rooms/' + room + '/background.png');
+        game.load.image(room + '-foreground', 'static/img/rooms/' + room + '/foreground.png');
+        game.load.image(room + '-mask',       'static/img/rooms/' + room + '/mask.png');
+    });
+
+    ITEMS.forEach((item) => {
+        game.load.image('item-' + item, 'static/img/items/' + item + '.png');
+    })
+
     game.load.spritesheet('guest-sprite', 'static/img/guest-sprite.png', 32, 64);
 }
 
-function create() {
-    setupKeyBindings();
 
+
+// Room properties
+var map;
+
+function loadRoom(room) {
+    // TODO: Probably have to clear the previous room if we're entering a new one
+
+    // TODO: Allow variable background sizes
     const BG_WIDTH = 2734;
     const BG_HEIGHT = 600;
 
-     game.world.setBounds(0, 0, BG_WIDTH, BG_HEIGHT);
+    game.world.setBounds(0, 0, BG_WIDTH, BG_HEIGHT);
 
 
     var bmd = game.make.bitmapData(BG_WIDTH, BG_HEIGHT);
-    bmd.draw(game.cache.getImage('background-mask'), 0, 0);
+    bmd.draw(game.cache.getImage(room.name + '-mask'), 0, 0);
     bmd.update();
     var data = bmd.data;
 
@@ -107,12 +125,46 @@ function create() {
     easystar.setGrid(map);
     easystar.setAcceptableTiles([1]);
 
-    var background = game.add.tileSprite(0, 0, BG_WIDTH, BG_HEIGHT, 'background');
+    var background = game.add.tileSprite(0, 0, BG_WIDTH, BG_HEIGHT, room.name + '-background');
 
+    items = game.add.group();
     sprites = game.add.group();
 
-    game.add.tileSprite(0, 0, BG_WIDTH, BG_HEIGHT, 'foreground');
-    // game.add.tileSprite(0, 0, BG_WIDTH, BG_HEIGHT, 'background-mask');
+    game.add.tileSprite(0, 0, BG_WIDTH, BG_HEIGHT, room.name + '-foreground');
+
+
+    // Load items
+    room.state.items.forEach(createItem);
+}
+
+function createItem(item) {
+    console.log('create item', item);
+
+    var itemSprite = game.add.tileSprite(item.x, item.y, 31, 89, 'item-' + item.sprite);
+    itemSprite.anchor.setTo(.5,1);
+    itemSprite.inputEnabled = true;
+
+    itemSprite.events.onInputOver.add(() => {
+        hoveredItem = {
+            "item": item,
+            "sprite": itemSprite
+        };
+        updateCursor();
+    });
+
+    itemSprite.events.onInputOut.add(() => {
+        if (hoveredItem != null && hoveredItem.item == item) {
+            hoveredItem = null;
+        }
+        updateCursor();
+    });
+
+    items.add(itemSprite);
+}
+
+
+function create() {
+    setupKeyBindings();
 
     // Create connection to server
     webSocketBridge.connect('/ws/' + id);
@@ -126,7 +178,6 @@ function create() {
             players[action.player.id] = new Player(game, sprites, easystar, action.player.x, action.player.y);
 
             if (action.player.id == id) {
-                console.log("FOLLOW ME");
                 game.camera.follow(players[action.player.id].sprite);
             }
         } else if (action.command == "remove_player") {
@@ -134,6 +185,8 @@ function create() {
             delete players[action.player.id];
         } else if (action.command == "move") {
             players[action.player.id].moveTo(action.x, action.y);
+        } else if (action.command == "load_room") {
+            loadRoom(action.room);
         }
     });
 
@@ -141,6 +194,17 @@ function create() {
     game.input.onDown.add(() => {
         var x = game.input.x + game.camera.x;
         var y = game.input.y + game.camera.y;
+        clickedItem = null;
+
+        if (hoveredItem != null) {
+            // We will walk over to the item and then activate it.
+            // for now we assume the point where we want to walk is the bottom centre
+            // of the item
+            // TMP
+            x = hoveredItem.item.x;
+            y = hoveredItem.item.y + 10;
+            clickedItem = hoveredItem;
+        }
         if (map[y][x] < 1) {
             var currentPosition = [players[id].sprite.x, players[id].sprite.y];
             var targetPosition = [x, y];
@@ -189,6 +253,14 @@ function render() {
     // game.debug.cameraInfo(game.camera, 32, 32);
     // game.debug.spriteCoords(players[id], 32, 500);
 
+}
+
+function updateCursor() {
+    if (hoveredItem == null) {
+        game.canvas.style.cursor = "default";
+    } else {
+        game.canvas.style.cursor = "pointer";
+    }
 }
 
 $("#chat-overlay form").submit((e) => {

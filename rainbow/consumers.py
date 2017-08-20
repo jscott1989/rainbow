@@ -1,5 +1,5 @@
 from channels import Channel, Group
-from rainbow.models import Player
+from rainbow.models import Player, Room
 import json
 
 
@@ -8,7 +8,8 @@ def extract_id_from_path(path):
 
 
 def chat_message(message):
-    Group("lobby").send({
+    player = Player.objects.get(player_id=message["player"]["id"])
+    Group(player.room.name).send({
         "text": json.dumps({
             "command": "chat",
             "player": message["player"],
@@ -36,11 +37,19 @@ def ws_connect(message, id):
     )
 
     player.enabled = True
+    player.room = Room.objects.get(name="lobby")
     player.save()
 
-    print("Added to lobby")
-    Group("lobby").add(message.reply_channel)
-    Group("lobby").send({
+    message.reply_channel.send({
+                "text": json.dumps({
+                    "command": "load_room",
+                    "room": player.room.data()
+                }),
+            })
+
+    print("Added to " + player.room.name)
+    Group(player.room.name).add(message.reply_channel)
+    Group(player.room.name).send({
         "text": json.dumps({
             "command": "add_player",
             "player": player.data()
@@ -64,9 +73,9 @@ def ws_disconnect(message):
     player.enabled = False
     player.save()
 
-    Group("lobby").discard(message.reply_channel)
+    Group(player.room.name).discard(message.reply_channel)
 
-    Group("lobby").send({
+    Group(player.room.name).send({
         "text": json.dumps({
             "command": "remove_player",
             "player": {
@@ -90,6 +99,7 @@ def ws_message(message):
             "text": content["text"]
         })
     elif content["command"] == "move":
+        player = Player.objects.get(player_id=player_id)
         Channel("move-message").send({
             "player": {
                 "id": player_id
@@ -97,7 +107,7 @@ def ws_message(message):
             "x": content["x"],
             "y": content["y"]
         })
-        Group("lobby").send({
+        Group(player.room.name).send({
             "text": json.dumps({
                 "command": "move",
                 "player": {

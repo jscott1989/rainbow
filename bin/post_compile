@@ -3,3 +3,4 @@ export PATH=/app/.heroku/node/bin:$PATH
 yarn install --production=false
 webpack
 ./manage.py migrate
+./manage.py loaddata lobby

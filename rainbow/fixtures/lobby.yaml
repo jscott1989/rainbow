@@ -1,0 +1,23 @@
+- model: rainbow.Room
+  pk: 1
+  fields:
+    name: lobby
+    state:
+      items:
+        - type: door
+          x: 100
+          y: 100
+          sprite: door1
+          target: room1
+
+- model: rainbow.Room
+  pk: 2
+  fields:
+    name: room1
+    state:
+      items:
+        - type: door
+          x: 100
+          y: 100
+          sprite: door1
+          target: room1

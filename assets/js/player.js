@@ -1,4 +1,4 @@
-const SMOOTHING_AMOUNT = 20;
+const SMOOTHING_AMOUNT = 100;
 
 class Player {
     constructor(game, sprites, easystar, x, y) {
@@ -44,10 +44,8 @@ class Player {
                 this.sprite.scale.x = 1;
                 next_direction = "side";
             } else if (next.y < this.sprite.y) {
-                this.sprite.scale.x = 1;
                 next_direction = "up";
             } else {
-                this.sprite.scale.x = 1;
                 next_direction = "down";
             }
 

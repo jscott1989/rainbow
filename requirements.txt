@@ -4,3 +4,4 @@ asgi-redis==1.4.2
 asgiref==1.1.2
 dj-database-url==0.4.2
 psycopg2==2.7.3
+pyyaml==3.12
