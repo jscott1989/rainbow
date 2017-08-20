@@ -3,21 +3,31 @@
   fields:
     name: lobby
     state:
-      items:
+      items: []
+      hotspots:
         - type: door
-          x: 100
-          y: 100
-          sprite: door1
+          x: 865
+          y: 273
+          w: 31
+          h: 89
           target: room1
+          target_x: 0
+          target_y: 540
+          enter: bottom
 
 - model: rainbow.Room
   pk: 2
   fields:
     name: room1
     state:
-      items:
+      items: []
+      hotspots:
         - type: door
-          x: 100
-          y: 100
-          sprite: door1
-          target: room1
+          x: 90
+          y: 540
+          w: 170
+          h: 60
+          target: lobby
+          target_x: 865
+          target_y: 280
+          enter: top

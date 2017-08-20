@@ -1,7 +1,7 @@
 import Player from "./player";
 
 const ROOMS = ["lobby", "room1"];
-const ITEMS = ["door1"];
+const ITEMS = [];
 
 
 // We won't have enough players for uuid uniqueness to matter - so using this
@@ -55,11 +55,12 @@ if (id == null) {
 const webSocketBridge = new channels.WebSocketBridge();
 var talkKey;
 var hoveredItem = null;
-var clickedItem = null;
 var players = {};
 var easystar = new EasyStar.js();
 var sprites;
 var items;
+var hotspots;
+var roomLoaded = false;
 
 var game = new Phaser.Game(
     800, 600,
@@ -67,6 +68,8 @@ var game = new Phaser.Game(
     "game", 
     { preload: preload, create: create, update: update, render: render }
 );
+
+game.clickedItem = null;
 
 function preload() {
     game.stage.disableVisibilityChange = true;
@@ -127,6 +130,7 @@ function loadRoom(room) {
 
     var background = game.add.tileSprite(0, 0, BG_WIDTH, BG_HEIGHT, room.name + '-background');
 
+    hotspots = game.add.group();
     items = game.add.group();
     sprites = game.add.group();
 
@@ -135,6 +139,9 @@ function loadRoom(room) {
 
     // Load items
     room.state.items.forEach(createItem);
+    room.state.hotspots.forEach(createHotspot);
+
+    roomLoaded = true;
 }
 
 function createItem(item) {
@@ -147,7 +154,10 @@ function createItem(item) {
     itemSprite.events.onInputOver.add(() => {
         hoveredItem = {
             "item": item,
-            "sprite": itemSprite
+            "sprite": itemSprite,
+            "act": () => {
+                // TODO
+            }
         };
         updateCursor();
     });
@@ -162,6 +172,54 @@ function createItem(item) {
     items.add(itemSprite);
 }
 
+function createHotspot(hotspot) {
+    console.log('create hotspot', hotspot);
+
+    var bmd = game.add.bitmapData(hotspot.w,hotspot.h);
+
+    // Debug draw
+    bmd.ctx.beginPath();
+    bmd.ctx.rect(0,0,hotspot.w,hotspot.h);
+    bmd.ctx.fillStyle = '#ff0000';
+    bmd.ctx.fill();
+
+    var hotspotSprite = game.add.sprite(hotspot.x, hotspot.y, bmd);
+
+    if (hotspot.enter == "top") {
+        hotspotSprite.anchor.setTo(.5,0);
+    } else {
+        hotspotSprite.anchor.setTo(.5,1);
+    }
+
+
+    hotspotSprite.inputEnabled = true;
+
+    hotspotSprite.events.onInputOver.add(() => {
+        console.log("AAA");
+        hoveredItem = {
+            "item": hotspot,
+            "sprite": hotspotSprite,
+            "act": () => {
+                if (hotspot.type == "door") {
+                    roomLoaded = false;
+                    webSocketBridge.send({command: 'go_to_room', room: hotspot.target, x: hotspot.target_x, y: hotspot.target_y});
+                }
+            }
+        };
+        updateCursor();
+    });
+
+    hotspotSprite.events.onInputOut.add(() => {
+        console.log("BBB");
+        if (hoveredItem != null && hoveredItem.item == hotspot) {
+            hoveredItem = null;
+        }
+        updateCursor();
+    });
+
+    hotspots.add(hotspotSprite);
+}
+
 
 function create() {
     setupKeyBindings();
@@ -169,21 +227,21 @@ function create() {
     // Create connection to server
     webSocketBridge.connect('/ws/' + id);
     webSocketBridge.listen((action) => {
-        if (action.command == "chat") {
+        if (action.command == "chat" && roomLoaded) {
             players[action.player.id].chat(action.text);
-        } else if (action.command == "add_player") {
+        } else if (action.command == "add_player" && roomLoaded) {
             if (players[action.player.id] != null) {
                 players[action.player.id].destroy();
             }
-            players[action.player.id] = new Player(game, sprites, easystar, action.player.x, action.player.y);
+            players[action.player.id] = new Player(game, sprites, (action.player.id == id), easystar, action.player.x, action.player.y);
 
             if (action.player.id == id) {
                 game.camera.follow(players[action.player.id].sprite);
             }
-        } else if (action.command == "remove_player") {
+        } else if (action.command == "remove_player" && roomLoaded) {
             players[action.player.id].destroy();
             delete players[action.player.id];
-        } else if (action.command == "move") {
+        } else if (action.command == "move" && roomLoaded) {
             players[action.player.id].moveTo(action.x, action.y);
         } else if (action.command == "load_room") {
             loadRoom(action.room);
@@ -194,7 +252,7 @@ function create() {
     game.input.onDown.add(() => {
         var x = game.input.x + game.camera.x;
         var y = game.input.y + game.camera.y;
-        clickedItem = null;
+        game.clickedItem = null;
 
         if (hoveredItem != null) {
             // We will walk over to the item and then activate it.
@@ -203,7 +261,7 @@ function create() {
             // TMP
             x = hoveredItem.item.x;
             y = hoveredItem.item.y + 10;
-            clickedItem = hoveredItem;
+            game.clickedItem = hoveredItem;
         }
         if (map[y][x] < 1) {
             var currentPosition = [players[id].sprite.x, players[id].sprite.y];

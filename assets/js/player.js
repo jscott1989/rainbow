@@ -1,10 +1,11 @@
 const SMOOTHING_AMOUNT = 100;
 
 class Player {
-    constructor(game, sprites, easystar, x, y) {
+    constructor(game, sprites, myPlayer, easystar, x, y) {
         this.game = game;
         this.direction = "side";
         this.easystar = easystar;
+        this.myPlayer = myPlayer;
         this.path = null;
         this.pathPointer = 0;
         this.sprite = game.add.sprite(x, y, 'guest-sprite');
@@ -31,63 +32,75 @@ class Player {
             }
         }
 
-        if (this.path != null && this.pathPointer < this.path.length) {
-            var next = this.path[this.pathPointer];
-            this.pathPointer += 1;
+        if (this.path != null) {
+            if (this.pathPointer < this.path.length) {
+                var next = this.path[this.pathPointer];
+                this.pathPointer += 1;
 
-            var next_direction = this.direction;
+                var next_direction = this.direction;
 
-            if (next.x < this.sprite.x) {
-                this.sprite.scale.x = -1;
-                next_direction = "side";
-            } else if (next.x > this.sprite.x) {
-                this.sprite.scale.x = 1;
-                next_direction = "side";
-            } else if (next.y < this.sprite.y) {
-                next_direction = "up";
-            } else {
-                next_direction = "down";
-            }
+                if (next.x < this.sprite.x) {
+                    this.sprite.scale.x = -1;
+                    next_direction = "side";
+                } else if (next.x > this.sprite.x) {
+                    this.sprite.scale.x = 1;
+                    next_direction = "side";
+                } else if (next.y < this.sprite.y) {
+                    next_direction = "up";
+                } else {
+                    next_direction = "down";
+                }
 
-            if (next_direction != this.direction) {
-                // We're going to switch - to ensure we do it smoothly
-                // make sure we're not going to just switch back
-                var changeCount = 0;
-                var lpos = [next.x, next.y];
-                for (var i = this.pathPointer; i < this.pathPointer + SMOOTHING_AMOUNT && i < this.path.length; i++) {
-                    var p = this.path[this.pathPointer];
-                    if (p.x < lpos[0] || p.x > lpos[0]) {
-                        // Side
-                        if (next_direction == "side") {
-                            changeCount += 1;
+                if (next_direction != this.direction) {
+                    // We're going to switch - to ensure we do it smoothly
+                    // make sure we're not going to just switch back
+                    var changeCount = 0;
+                    var lpos = [next.x, next.y];
+                    for (var i = this.pathPointer; i < this.pathPointer + SMOOTHING_AMOUNT && i < this.path.length; i++) {
+                        var p = this.path[this.pathPointer];
+                        if (p.x < lpos[0] || p.x > lpos[0]) {
+                            // Side
+                            if (next_direction == "side") {
+                                changeCount += 1;
+                            } else {
+                                changeCount -= 1;
+                            }
+                        } else if (p.y < lpos[1]) {
+                            // Up
+                            if (next_direction == "up") {
+                                changeCount += 1;
+                            } else {
+                                changeCount -= 1;
+                            }
                         } else {
-                            changeCount -= 1;
+                            // Down
+                            if (next_direction == "down") {
+                                changeCount += 1;
+                            } else {
+                                changeCount -= 1;
+                            }
                         }
-                    } else if (p.y < lpos[1]) {
-                        // Up
-                        if (next_direction == "up") {
-                            changeCount += 1;
-                        } else {
-                            changeCount -= 1;
-                        }
-                    } else {
-                        // Down
-                        if (next_direction == "down") {
-                            changeCount += 1;
-                        } else {
-                            changeCount -= 1;
-                        }
+                    }
+
+                    if (changeCount > 0) {
+                        this.direction = next_direction;
                     }
                 }
 
-                if (changeCount > 0) {
-                    this.direction = next_direction;
+                this.sprite.x = next.x;
+                this.sprite.y = next.y;
+                this.sprite.animations.play('walk-' + this.direction)
+            } else {
+                // Just finished
+                if (this.myPlayer) {
+                    // We're the main player
+                    if (this.game.clickedItem != null) {
+                        // We clicked an item
+                        this.game.clickedItem.act();
+                    }
                 }
+                this.path = null;
             }
-
-            this.sprite.x = next.x;
-            this.sprite.y = next.y;
-            this.sprite.animations.play('walk-' + this.direction)
         } else {
             this.sprite.animations.play('idle-' + this.direction)
         }
