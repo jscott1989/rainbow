@@ -54,18 +54,20 @@ var talkKey;
 var players = {};
 var easystar = new EasyStar.js();
 var map;
+var sprites;
 
 var game = new Phaser.Game(
     800, 600,
     Phaser.CANVAS,
     "game", 
-    { preload: preload, create: create, update: update }
+    { preload: preload, create: create, update: update, render: render }
 );
 
 function preload() {
     game.stage.disableVisibilityChange = true;
 
     game.load.image('background', 'static/img/test-background.png');
+    game.load.image('foreground', 'static/img/test-foreground.png');
     game.load.image('background-mask', 'static/img/test-background-mask.png');
     game.load.spritesheet('guest-sprite', 'static/img/guest-sprite.png', 32, 64, 7);
 }
@@ -75,6 +77,8 @@ function create() {
 
     const BG_WIDTH = 2734;
     const BG_HEIGHT = 600;
+
+     game.world.setBounds(0, 0, BG_WIDTH, BG_HEIGHT);
 
 
     var bmd = game.make.bitmapData(BG_WIDTH, BG_HEIGHT);
@@ -104,7 +108,11 @@ function create() {
     easystar.setAcceptableTiles([1]);
 
     var background = game.add.tileSprite(0, 0, BG_WIDTH, BG_HEIGHT, 'background');
-    game.add.tileSprite(0, 0, BG_WIDTH, BG_HEIGHT, 'background-mask');
+
+    sprites = game.add.group();
+
+    game.add.tileSprite(0, 0, BG_WIDTH, BG_HEIGHT, 'foreground');
+    // game.add.tileSprite(0, 0, BG_WIDTH, BG_HEIGHT, 'background-mask');
 
     // Create connection to server
     webSocketBridge.connect('/ws/' + id);
@@ -115,13 +123,40 @@ function create() {
             if (players[action.player.id] != null) {
                 players[action.player.id].destroy();
             }
-            players[action.player.id] = new Player(game, easystar, action.player.x, action.player.y);
+            players[action.player.id] = new Player(game, sprites, easystar, action.player.x, action.player.y);
+
+            if (action.player.id == id) {
+                console.log("FOLLOW ME");
+                game.camera.follow(players[action.player.id].sprite);
+            }
         } else if (action.command == "remove_player") {
             players[action.player.id].destroy();
             delete players[action.player.id];
         } else if (action.command == "move") {
             players[action.player.id].moveTo(action.x, action.y);
         }
+    });
+
+
+    game.input.onDown.add(() => {
+        var x = game.input.x + game.camera.x;
+        var y = game.input.y + game.camera.y;
+        if (map[y][x] < 1) {
+            var currentPosition = [players[id].sprite.x, players[id].sprite.y];
+            var targetPosition = [x, y];
+            var possibleCoordinates = calcStraightLine(targetPosition, currentPosition);
+
+            for (var c in possibleCoordinates) {
+                var coordinate = possibleCoordinates[c];
+                if (map[coordinate[1]][coordinate[0]] > 0) {
+                    // Can use this one
+                    x = coordinate[0];
+                    y = coordinate[1];
+                    break;
+                }
+            }
+        }
+        webSocketBridge.send({command: 'move', x: x, y: y})
     });
 }
 
@@ -142,32 +177,18 @@ function removeKeyBindings() {
 
 
 function update() {
-    if (game.input.activePointer.isDown) {
-        var x = game.input.x;
-        var y = game.input.y;
-        if (map[y][x] < 1) {
-            var currentPosition = [players[id].sprite.x, players[id].sprite.y];
-            var targetPosition = [x, y];
-            var possibleCoordinates = calcStraightLine(targetPosition, currentPosition);
-
-            for (var c in possibleCoordinates) {
-                var coordinate = possibleCoordinates[c];
-                if (map[coordinate[1]][coordinate[0]] > 0) {
-                    // Can use this one
-                    x = coordinate[0];
-                    y = coordinate[1];
-                    break;
-                }
-            }
-        }
-        webSocketBridge.send({command: 'move', x: x, y: y})
-    }
-
     for (var player in players) {
         players[player].update();
     }
 
     easystar.calculate()
+}
+
+function render() {
+
+    // game.debug.cameraInfo(game.camera, 32, 32);
+    // game.debug.spriteCoords(players[id], 32, 500);
+
 }
 
 $("#chat-overlay form").submit((e) => {
