@@ -5,7 +5,7 @@ class Player {
         this.path = null;
         this.pathPointer = 0;
         this.sprite = game.add.sprite(x, y, 'guest-sprite');
-        this.sprite.anchor.setTo(.5,.5);
+        this.sprite.anchor.setTo(.5,1);
         this.sprite.animations.add('idle', [1], 1, true);
         this.sprite.animations.add('walk', [2,3,4,5,6,7], 6, true);
         this.sprite.animations.play('idle');
@@ -19,7 +19,7 @@ class Player {
                 this.chatText = null;
             } else {
                 this.chatText.x = this.sprite.x;
-                this.chatText.y = this.sprite.y - 30;
+                this.chatText.y = this.sprite.y - 64;
             }
         }
 
@@ -29,7 +29,7 @@ class Player {
 
             if (next.x < this.sprite.x) {
                 this.sprite.scale.x = -1;
-            } else {
+            } else if (next.x > this.sprite.x) {
                 this.sprite.scale.x = 1;
             }
 
