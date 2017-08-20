@@ -140,5 +140,12 @@ def ws_message(message):
         player.room = room
         player.save()
 
+        Group(player.room.name).send({
+            "text": json.dumps({
+                "command": "add_player",
+                "player": player.data()
+            }),
+        })
+
         Group(player.room.name).add(message.reply_channel)
         welcome_to_room(room, message.reply_channel)
