@@ -178,10 +178,10 @@ function createHotspot(hotspot) {
     var bmd = game.add.bitmapData(hotspot.w,hotspot.h);
 
     // Debug draw
-    bmd.ctx.beginPath();
-    bmd.ctx.rect(0,0,hotspot.w,hotspot.h);
-    bmd.ctx.fillStyle = '#ff0000';
-    bmd.ctx.fill();
+    // bmd.ctx.beginPath();
+    // bmd.ctx.rect(0,0,hotspot.w,hotspot.h);
+    // bmd.ctx.fillStyle = '#ff0000';
+    // bmd.ctx.fill();
 
     var hotspotSprite = game.add.sprite(hotspot.x, hotspot.y, bmd);
 
