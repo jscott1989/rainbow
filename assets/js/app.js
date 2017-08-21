@@ -1,8 +1,7 @@
 import Player from "./player";
 
 const ROOMS = ["lobby", "room1"];
-const ITEMS = [];
-const CARRYABLE_ITEMS = ["thing"];
+const ITEMS = ["thing", "thing2"];
 
 // We won't have enough players for uuid uniqueness to matter - so using this
 // poor quality version
@@ -72,6 +71,11 @@ var game = new Phaser.Game(
 );
 
 game.clickedItem = null;
+game.usedItem = null;
+
+game.talk = (text) => {
+    webSocketBridge.send({command: 'chat', text: text});
+}
 
 function preload() {
     game.stage.disableVisibilityChange = true;
@@ -84,11 +88,6 @@ function preload() {
 
     ITEMS.forEach((item) => {
         game.load.image('item-' + item, 'static/img/items/' + item + '.png');
-    });
-
-    CARRYABLE_ITEMS.forEach((item) => {
-        game.load.image('item-' + item, 'static/img/items/' + item + '.png');
-        game.load.image('item-' + item + "-inventory", 'static/img/items/' + item + '-inventory.png');
     });
 
     game.load.spritesheet('guest-sprite', 'static/img/guest-sprite.png', 32, 64);
@@ -107,7 +106,6 @@ function loadRoom(room) {
     const BG_HEIGHT = 600;
 
     game.world.setBounds(0, 0, BG_WIDTH, BG_HEIGHT);
-
 
     var bmd = game.make.bitmapData(BG_WIDTH, BG_HEIGHT);
     bmd.draw(game.cache.getImage(room.name + '-mask'), 0, 0);
@@ -196,8 +194,6 @@ function createItem(item) {
 }
 
 function createHotspot(hotspot) {
-    console.log('create hotspot', hotspot);
-
     var bmd = game.add.bitmapData(hotspot.w,hotspot.h);
 
     // Debug draw
@@ -218,7 +214,6 @@ function createHotspot(hotspot) {
     hotspotSprite.inputEnabled = true;
 
     hotspotSprite.events.onInputOver.add(() => {
-        console.log("AAA");
         hoveredItem = {
             "item": hotspot,
             "sprite": hotspotSprite,
@@ -233,7 +228,6 @@ function createHotspot(hotspot) {
     });
 
     hotspotSprite.events.onInputOut.add(() => {
-        console.log("BBB");
         if (hoveredItem != null && hoveredItem.item == hotspot) {
             hoveredItem = null;
         }
@@ -269,6 +263,9 @@ function create() {
         } else if (action.command == "remove_item" && roomLoaded) {
             items_by_key[action.item].sprite.destroy();
             delete items_by_key[action.item];
+            if (hoveredItem.item.id == action.item) {
+                hoveredItem = null;
+            }
         } else if (action.command == "move" && roomLoaded) {
             players[action.player.id].moveTo(action.x, action.y);
         } else if (action.command == "load_room") {
@@ -277,19 +274,42 @@ function create() {
     });
 
 
-    game.input.onDown.add(() => {
+    game.input.onDown.add((pointer) => {
+
         var x = game.input.x + game.camera.x;
         var y = game.input.y + game.camera.y;
         game.clickedItem = null;
+        game.usedItem = null;
+
+        if (pointer.button == Phaser.Mouse.RIGHT_BUTTON && selectedItem != null) {
+            // Deselect
+            selectedItem.hover_img.remove();
+            selectedItem.inventory_li.removeClass("selected");
+            selectedItem = null;
+            return;
+        }
+
 
         if (hoveredItem != null) {
-            // We will walk over to the item and then activate it.
-            // for now we assume the point where we want to walk is the bottom centre
-            // of the item
-            // TMP
-            x = hoveredItem.item.x;
-            y = hoveredItem.item.y + 10;
-            game.clickedItem = hoveredItem;
+            if (pointer.button == Phaser.Mouse.RIGHT_BUTTON) {
+                // We're looking at something
+                webSocketBridge.send({command: 'move', x: players[id].sprite.x, y: players[id].sprite.y})
+                game.talk(hoveredItem.item.look_at);
+
+                return;
+            } else {
+                // Just moving
+                // We will walk over to the item and then activate it.
+                // for now we assume the point where we want to walk is the bottom centre
+                // of the item
+                x = hoveredItem.item.x;
+                y = hoveredItem.item.y + 10;
+                game.clickedItem = hoveredItem;
+
+                if (selectedItem != null) {
+                    game.usedItem = selectedItem;
+                }
+            }
         }
         if (map[y][x] < 1) {
             var currentPosition = [players[id].sprite.x, players[id].sprite.y];
@@ -331,7 +351,7 @@ function update() {
         players[player].update();
     }
 
-    easystar.calculate()
+    easystar.calculate();
 }
 
 function render() {
@@ -354,7 +374,7 @@ var inventory_list = $("#inventory ul");
 function refreshInventory(player) {
     inventory_list.html("");
     Object.keys(player.state.items).forEach((key) => {
-        inventory_list.append($("<li>" + player.state.items[key].id + "</li>"));
+        inventory_list.append($("<li data-item-id=\"" + player.state.items[key].id + "\"><img src=\"/static/img/items/" + player.state.items[key].type + "-inventory.png\"></li>"));
     });
 }
 
@@ -366,7 +386,7 @@ function addToInventory(player, item) {
 $("#chat-overlay form").submit((e) => {
     const text = $("#chat-overlay input").val();
 
-    webSocketBridge.send({command: 'chat', text: text});
+    game.talk(text);
 
     $("#chat-overlay input").val("");
     e.preventDefault();
@@ -374,3 +394,72 @@ $("#chat-overlay form").submit((e) => {
     setupKeyBindings();
     $("#chat-overlay").hide();
 });
+
+
+$("body").on("mousedown", "#inventory li",  (evt) => {
+    var $li = $(evt.target).parent();
+    var li = $li[0]
+
+    if (evt.which == 3) {
+        // Right mouse button, just looking
+        game.talk(players[id].state.items[$li.data('item-id')].look_at);
+        return;
+    }
+    
+    // First , we care if we have something selected already
+    if (selectedItem != null) {
+        if (selectedItem.item_id == $li.data('item-id')) {
+            // If they are the same item, just release it
+            $li.removeClass("selected");
+            selectedItem.hover_img.remove();
+            selectedItem = null;
+        } else {
+            // Otherwise try to use them together
+            useTogetherInInventory(selectedItem.item_id, $li.data('item-id'));
+        }
+    } else {
+        // Otherwise, just select it
+        selectedItem = {
+            "item_id": $li.data('item-id'),
+            "inventory_li": $li,
+            "hover_img": $("<img id=\"hover_img\" src=\"" + $li.find("img").attr("src") + "\">")
+        };
+        selectedItem.inventory_li.addClass("selected");
+        $("body").append(selectedItem.hover_img);
+        selectedItem.hover_img.css({left: mouseX + 10, top: mouseY});
+    }
+});
+
+var mouseX = 0;
+var mouseY = 0;
+
+$("body").on("mousemove", (evt) => {
+    mouseX = evt.pageX;
+    mouseY = evt.pageY;
+
+    if (selectedItem != null) {
+        selectedItem.hover_img.css({left: mouseX + 10, top: mouseY});
+    }
+});
+
+$("body").on("contextmenu", (e) => {
+    e.preventDefault();
+});
+
+game.useItem = (item1, item2) => {
+    // item1 is inventory
+    // item2 is in the world
+
+    // TODO: implement a reaction
+    game.talk("I don't think that will work.");
+}
+
+function useTogetherInInventory(item1, item2) {
+    var i1 = players[id].state.items[item1];
+    var i2 = players[id].state.items[item2];
+    console.log("using ", i1, " with ", i2);
+    // TODO: Implement a reaction
+    game.talk("I don't think that will work.");
+}
+
+var selectedItem;

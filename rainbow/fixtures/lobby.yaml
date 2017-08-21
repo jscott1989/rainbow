@@ -10,6 +10,14 @@
           y: 320
           enter: bottom
           holdable: True
+          look_at: I don't really know what it is. It's kind of red.
+        thing-test2:
+          type: thing2
+          x: 300
+          y: 320
+          enter: bottom
+          holdable: True
+          look_at: I don't really know what it is. It's kind of yellow.
       hotspots:
         door1:
           type: door
@@ -21,6 +29,7 @@
           target_x: 0
           target_y: 540
           enter: bottom
+          look_at: It's just a door...
 
 - model: rainbow.Room
   pk: 2
@@ -39,3 +48,4 @@
           target_x: 865
           target_y: 280
           enter: top
+          look_at: It's just a door...

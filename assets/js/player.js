@@ -34,7 +34,7 @@ class Player {
                 this.chatText = null;
             } else {
                 this.chatText.x = this.sprite.x;
-                this.chatText.y = this.sprite.y - 64;
+                this.chatText.y = this.sprite.y - 50 - this.chatText.height * 0.5;
             }
         }
 
@@ -105,10 +105,15 @@ class Player {
                         const distance = distance_between(this.game.clickedItem.item.x, this.game.clickedItem.item.y + 10, this.sprite.x, this.sprite.y);
 
                         if (distance > REACH_DISTANCE) {
-                            this.chat("I can't reach it");
+                            this.game.talk("I can't reach it");
                         } else {
-                            // We clicked an item
-                            this.game.clickedItem.act();
+                            if (this.game.usedItem != null) {
+                                // Using an item
+                                this.game.useItem(this.game.usedItem, this.game.clickedItem);
+                            } else {
+                                // We clicked an item
+                                this.game.clickedItem.act();
+                            }
                         }
                     }
                 }
@@ -145,7 +150,9 @@ class Player {
             this.sprite.y - 30, text, {
                 font: "18px Press Start 2P",
                 fill: "#ffffff",
-                align: "center"
+                align: "center",
+                wordWrap: true,
+                wordWrapWidth: 300
             });
         this.chatText.anchor.setTo(0.5);
         this.chatTextTimeout = 3000;
