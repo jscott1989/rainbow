@@ -251,7 +251,7 @@ function create() {
             if (players[action.player.id] != null) {
                 players[action.player.id].destroy();
             }
-            players[action.player.id] = new Player(game, sprites, (action.player.id == id), easystar, action.player.x, action.player.y, action.player.state);
+            players[action.player.id] = new Player(game, sprites, (action.player.id == id), easystar, action.player.x, action.player.y, action.player.state, action.player.color);
 
             if (action.player.id == id) {
                 game.camera.follow(players[action.player.id].sprite);

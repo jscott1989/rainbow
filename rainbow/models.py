@@ -19,6 +19,7 @@ class Player(models.Model):
     room = models.ForeignKey(Room, default=1)
     x = models.IntegerField()
     y = models.IntegerField()
+    color = models.CharField(max_length=7)
     state = JSONField()
 
     def add_item(self, item):
@@ -32,5 +33,6 @@ class Player(models.Model):
             "id": self.player_id,
             "x": self.x,
             "y": self.y,
+            "color": self.color,
             "state": self.state
         }

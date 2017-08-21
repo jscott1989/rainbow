@@ -6,7 +6,7 @@ function distance_between(x1, y1, x2, y2) {
 }
 
 class Player {
-    constructor(game, sprites, myPlayer, easystar, x, y, state) {
+    constructor(game, sprites, myPlayer, easystar, x, y, state, color) {
         this.game = game;
         this.direction = "side";
         this.easystar = easystar;
@@ -14,6 +14,7 @@ class Player {
         this.path = null;
         this.pathPointer = 0;
         this.state = state;
+        this.color = color;
         this.sprite = game.add.sprite(x, y, 'guest-sprite');
         sprites.add(this.sprite);
         this.sprite.anchor.setTo(.5,1);
@@ -149,7 +150,7 @@ class Player {
             this.sprite.x,
             this.sprite.y - 30, text, {
                 font: "18px Press Start 2P",
-                fill: "#ffffff",
+                fill: this.color,
                 align: "center",
                 wordWrap: true,
                 wordWrapWidth: 300
