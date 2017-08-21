@@ -32,7 +32,8 @@ def ws_connect(message, id):
         player_id=id,
         defaults={
             "x": 279,
-            "y": 310
+            "y": 310,
+            "state": {"items": {}}
         }
     )
 
@@ -149,3 +150,21 @@ def ws_message(message):
 
         Group(player.room.name).add(message.reply_channel)
         welcome_to_room(room, message.reply_channel)
+    elif content["command"] == "pick_up_item":
+        player = Player.objects.get(player_id=player_id)
+        item = player.room.state["items"][content["item"]]
+        item["id"] = content["item"]
+
+        # First, remove the item from the room
+        del player.room.state["items"][content["item"]]
+        player.room.save()
+        Group(player.room.name).send({
+            "text": json.dumps({
+                "command": "remove_item",
+                "item": content["item"]
+            }),
+        })
+
+        # Then put the item in the player's inventory
+        player.add_item(item)
+        player.save()

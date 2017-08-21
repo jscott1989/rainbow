@@ -1,13 +1,19 @@
 const SMOOTHING_AMOUNT = 100;
+const REACH_DISTANCE = 30;
+
+function distance_between(x1, y1, x2, y2) {
+    return Math.sqrt(Math.pow(x1 - x2, 2) + Math.pow(y1 - y2, 2));
+}
 
 class Player {
-    constructor(game, sprites, myPlayer, easystar, x, y) {
+    constructor(game, sprites, myPlayer, easystar, x, y, state) {
         this.game = game;
         this.direction = "side";
         this.easystar = easystar;
         this.myPlayer = myPlayer;
         this.path = null;
         this.pathPointer = 0;
+        this.state = state;
         this.sprite = game.add.sprite(x, y, 'guest-sprite');
         sprites.add(this.sprite);
         this.sprite.anchor.setTo(.5,1);
@@ -95,8 +101,15 @@ class Player {
                 if (this.myPlayer) {
                     // We're the main player
                     if (this.game.clickedItem != null) {
-                        // We clicked an item
-                        this.game.clickedItem.act();
+
+                        const distance = distance_between(this.game.clickedItem.item.x, this.game.clickedItem.item.y + 10, this.sprite.x, this.sprite.y);
+
+                        if (distance > REACH_DISTANCE) {
+                            this.chat("I can't reach it");
+                        } else {
+                            // We clicked an item
+                            this.game.clickedItem.act();
+                        }
                     }
                 }
                 this.path = null;

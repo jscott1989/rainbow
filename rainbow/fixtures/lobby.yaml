@@ -3,9 +3,16 @@
   fields:
     name: lobby
     state:
-      items: []
+      items:
+        thing-test:
+          type: thing
+          x: 500
+          y: 320
+          enter: bottom
+          holdable: True
       hotspots:
-        - type: door
+        door1:
+          type: door
           x: 865
           y: 273
           w: 31
@@ -20,9 +27,10 @@
   fields:
     name: room1
     state:
-      items: []
+      items: {}
       hotspots:
-        - type: door
+        door2:
+          type: door
           x: 90
           y: 540
           w: 170

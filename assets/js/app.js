@@ -2,7 +2,7 @@ import Player from "./player";
 
 const ROOMS = ["lobby", "room1"];
 const ITEMS = [];
-
+const CARRYABLE_ITEMS = ["thing"];
 
 // We won't have enough players for uuid uniqueness to matter - so using this
 // poor quality version
@@ -60,6 +60,8 @@ var easystar = new EasyStar.js();
 var sprites;
 var items;
 var hotspots;
+var items_by_key;
+var hotspots_by_key;
 var roomLoaded = false;
 
 var game = new Phaser.Game(
@@ -82,7 +84,12 @@ function preload() {
 
     ITEMS.forEach((item) => {
         game.load.image('item-' + item, 'static/img/items/' + item + '.png');
-    })
+    });
+
+    CARRYABLE_ITEMS.forEach((item) => {
+        game.load.image('item-' + item, 'static/img/items/' + item + '.png');
+        game.load.image('item-' + item + "-inventory", 'static/img/items/' + item + '-inventory.png');
+    });
 
     game.load.spritesheet('guest-sprite', 'static/img/guest-sprite.png', 32, 64);
 }
@@ -132,14 +139,24 @@ function loadRoom(room) {
 
     hotspots = game.add.group();
     items = game.add.group();
+    items_by_key = {};
+    hotspots_by_key = {};
     sprites = game.add.group();
 
     game.add.tileSprite(0, 0, BG_WIDTH, BG_HEIGHT, room.name + '-foreground');
 
 
     // Load items
-    room.state.items.forEach(createItem);
-    room.state.hotspots.forEach(createHotspot);
+    for (var key in room.state.items) {
+        var item = room.state.items[key];
+        item.id = key;
+        createItem(item);
+    }
+    for (var key in room.state.hotspots) {
+        var hotspot = room.state.hotspots[key];
+        hotspot.id = key;
+        createHotspot(hotspot);
+    }
 
     roomLoaded = true;
 }
@@ -147,7 +164,9 @@ function loadRoom(room) {
 function createItem(item) {
     console.log('create item', item);
 
-    var itemSprite = game.add.tileSprite(item.x, item.y, 31, 89, 'item-' + item.sprite);
+    const ITEM_WIDTH = 32;
+    const ITEM_HEIGHT = 32;
+    var itemSprite = game.add.tileSprite(item.x, item.y, ITEM_WIDTH, ITEM_HEIGHT, 'item-' + item.type);
     itemSprite.anchor.setTo(.5,1);
     itemSprite.inputEnabled = true;
 
@@ -156,7 +175,10 @@ function createItem(item) {
             "item": item,
             "sprite": itemSprite,
             "act": () => {
-                // TODO
+                if (item.holdable) {
+                    webSocketBridge.send({command: 'pick_up_item', item: item.id});
+                    addToInventory(players[id], item)
+                }
             }
         };
         updateCursor();
@@ -170,6 +192,7 @@ function createItem(item) {
     });
 
     items.add(itemSprite);
+    items_by_key[item.id] = {"item": item, "sprite": itemSprite};
 }
 
 function createHotspot(hotspot) {
@@ -218,6 +241,7 @@ function createHotspot(hotspot) {
     });
 
     hotspots.add(hotspotSprite);
+    hotspots_by_key[hotspot.id] = {"item": hotspot, "sprite": hotspotSprite};
 }
 
 
@@ -233,14 +257,18 @@ function create() {
             if (players[action.player.id] != null) {
                 players[action.player.id].destroy();
             }
-            players[action.player.id] = new Player(game, sprites, (action.player.id == id), easystar, action.player.x, action.player.y);
+            players[action.player.id] = new Player(game, sprites, (action.player.id == id), easystar, action.player.x, action.player.y, action.player.state);
 
             if (action.player.id == id) {
                 game.camera.follow(players[action.player.id].sprite);
+                refreshInventory(players[action.player.id]);
             }
         } else if (action.command == "remove_player" && roomLoaded) {
             players[action.player.id].destroy();
             delete players[action.player.id];
+        } else if (action.command == "remove_item" && roomLoaded) {
+            items_by_key[action.item].sprite.destroy();
+            delete items_by_key[action.item];
         } else if (action.command == "move" && roomLoaded) {
             players[action.player.id].moveTo(action.x, action.y);
         } else if (action.command == "load_room") {
@@ -319,6 +347,20 @@ function updateCursor() {
     } else {
         game.canvas.style.cursor = "pointer";
     }
+}
+
+var inventory_list = $("#inventory ul");
+
+function refreshInventory(player) {
+    inventory_list.html("");
+    Object.keys(player.state.items).forEach((key) => {
+        inventory_list.append($("<li>" + player.state.items[key].id + "</li>"));
+    });
+}
+
+function addToInventory(player, item) {
+    player.state.items[item.id] = item;
+    refreshInventory(player);
 }
 
 $("#chat-overlay form").submit((e) => {

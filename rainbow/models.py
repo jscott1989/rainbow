@@ -19,10 +19,18 @@ class Player(models.Model):
     room = models.ForeignKey(Room, default=1)
     x = models.IntegerField()
     y = models.IntegerField()
+    state = JSONField()
+
+    def add_item(self, item):
+        if "items" not in self.state:
+            self.state["items"] = {}
+
+        self.state["items"][item["id"]] = item
 
     def data(self):
         return {
             "id": self.player_id,
             "x": self.x,
-            "y": self.y
+            "y": self.y,
+            "state": self.state
         }
