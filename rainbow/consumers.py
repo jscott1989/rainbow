@@ -1,5 +1,5 @@
 from channels import Channel, Group
-from rainbow.models import Player, Room
+from rainbow.models import Player, Room, World
 import json
 
 colors = [
@@ -22,6 +22,13 @@ colors = [
     "#C895C5", "#320033", "#FF6832", "#66E1D3", "#CFCDAC", "#D0AC94", "#7ED379", "#012C58"
 ]
 color_index = 0
+
+
+def get_world():
+    world, created = World.objects.get_or_create(id=1, defaults={
+            "state": {}
+    })
+    return world
 
 
 def extract_id_from_path(path):
@@ -75,6 +82,14 @@ def ws_connect(message, id):
         }),
     })
 
+    message.reply_channel.send({
+        "text": json.dumps({
+            "command": "set_world_state",
+            "state": get_world().state
+        })
+    })
+
+    Group(player.player_id).add(message.reply_channel)
     Group(player.room.name).add(message.reply_channel)
     welcome_to_room(player.room, message.reply_channel)
 
@@ -193,3 +208,42 @@ def ws_message(message):
         # Then put the item in the player's inventory
         player.add_item(item)
         player.save()
+    elif content["command"] == "dialogue":
+        player = Player.objects.get(player_id=player_id)
+        # Update the character according to the dialogue
+        # TODO
+
+        # Tell everyone in the room about the dialogue
+        Group(player.room.name).send({
+            "text": json.dumps({
+                "command": "dialogue",
+                "player":  {
+                    "id": player_id
+                },
+                "character": content["character"],
+                "option": content["option"]
+            })
+        })
+    elif content["command"] == "give_item":
+        player = Player.objects.get(player_id=player_id)
+        other_player = Player.objects.get(player_id=content["player"])
+
+        # Place item on other_player
+        other_player.state["items"][content["item"]] = player.state["items"][content["item"]]
+        other_player.save()
+        del player.state["items"][content["item"]]
+        player.save()
+
+        Group(player.player_id).send({
+            "text": json.dumps({
+                "command": "remove_item_from_inventory",
+                "item": content["item"]
+            })
+        })
+
+        Group(other_player.player_id).send({
+            "text": json.dumps({
+                "command": "add_item_to_inventory",
+                "item": other_player.state["items"][content["item"]]
+            })
+        })

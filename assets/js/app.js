@@ -1,4 +1,5 @@
 import Player from "./player";
+import Character from "./character";
 
 const ROOMS = ["lobby", "room1"];
 const ITEMS = ["thing", "thing2"];
@@ -53,8 +54,8 @@ if (id == null) {
 
 const webSocketBridge = new channels.WebSocketBridge();
 var talkKey;
-var hoveredItem = null;
 var players = {};
+var characters = {};
 var easystar = new EasyStar.js();
 var sprites;
 var items;
@@ -62,6 +63,7 @@ var hotspots;
 var items_by_key;
 var hotspots_by_key;
 var roomLoaded = false;
+var worldState;
 
 var game = new Phaser.Game(
     800, 600,
@@ -70,6 +72,7 @@ var game = new Phaser.Game(
     { preload: preload, create: create, update: update, render: render }
 );
 
+game.hoveredItem = null;
 game.clickedItem = null;
 game.usedItem = null;
 
@@ -155,21 +158,25 @@ function loadRoom(room) {
         hotspot.id = key;
         createHotspot(hotspot);
     }
+    for (var key in room.state.characters) {
+        var character = room.state.characters[key];
+        character.id = key;
+        createCharacter(character);
+    }
 
     roomLoaded = true;
 }
 
 function createItem(item) {
-    console.log('create item', item);
-
     const ITEM_WIDTH = 32;
     const ITEM_HEIGHT = 32;
     var itemSprite = game.add.tileSprite(item.x, item.y, ITEM_WIDTH, ITEM_HEIGHT, 'item-' + item.type);
     itemSprite.anchor.setTo(.5,1);
     itemSprite.inputEnabled = true;
-
+    
     itemSprite.events.onInputOver.add(() => {
-        hoveredItem = {
+        game.hoveredItem = {
+            "type": "item",
             "item": item,
             "sprite": itemSprite,
             "act": () => {
@@ -179,14 +186,14 @@ function createItem(item) {
                 }
             }
         };
-        updateCursor();
+        game.updateCursor();
     });
 
     itemSprite.events.onInputOut.add(() => {
-        if (hoveredItem != null && hoveredItem.item == item) {
-            hoveredItem = null;
+        if (game.hoveredItem != null && game.hoveredItem.item == item) {
+            game.hoveredItem = null;
         }
-        updateCursor();
+        game.updateCursor();
     });
 
     items.add(itemSprite);
@@ -213,8 +220,10 @@ function createHotspot(hotspot) {
 
     hotspotSprite.inputEnabled = true;
 
+
     hotspotSprite.events.onInputOver.add(() => {
-        hoveredItem = {
+        game.hoveredItem = {
+            "type": hotspot,
             "item": hotspot,
             "sprite": hotspotSprite,
             "act": () => {
@@ -224,20 +233,24 @@ function createHotspot(hotspot) {
                 }
             }
         };
-        updateCursor();
+        game.updateCursor();
     });
 
     hotspotSprite.events.onInputOut.add(() => {
-        if (hoveredItem != null && hoveredItem.item == hotspot) {
-            hoveredItem = null;
+        if (game.hoveredItem != null && game.hoveredItem.item == hotspot) {
+            game.hoveredItem = null;
         }
-        updateCursor();
+        game.updateCursor();
     });
 
     hotspots.add(hotspotSprite);
     hotspots_by_key[hotspot.id] = {"item": hotspot, "sprite": hotspotSprite};
 }
 
+function createCharacter(character) {
+    console.log("Create character ", character);
+    characters[character.id] = new Character(game, sprites, easystar, character.x, character.y, character.dialogue, character.color);
+}
 
 function create() {
     setupKeyBindings();
@@ -251,7 +264,7 @@ function create() {
             if (players[action.player.id] != null) {
                 players[action.player.id].destroy();
             }
-            players[action.player.id] = new Player(game, sprites, (action.player.id == id), easystar, action.player.x, action.player.y, action.player.state, action.player.color);
+            players[action.player.id] = new Player(action.player.id, game, sprites, (action.player.id == id), easystar, action.player.x, action.player.y, action.player.state, action.player.color);
 
             if (action.player.id == id) {
                 game.camera.follow(players[action.player.id].sprite);
@@ -263,13 +276,19 @@ function create() {
         } else if (action.command == "remove_item" && roomLoaded) {
             items_by_key[action.item].sprite.destroy();
             delete items_by_key[action.item];
-            if (hoveredItem.item.id == action.item) {
-                hoveredItem = null;
+            if (game.hoveredItem.item.id == action.item) {
+                game.hoveredItem = null;
             }
         } else if (action.command == "move" && roomLoaded) {
             players[action.player.id].moveTo(action.x, action.y);
         } else if (action.command == "load_room") {
             loadRoom(action.room);
+        } else if (action.command == "set_world_state") {
+            worldState = action.state;
+        } else if (action.command == "remove_item_from_inventory") {
+            removeFromInventory(players[id], action.item);
+        } else if (action.command == "add_item_to_inventory") {
+            addToInventory(players[id], action.item);
         }
     });
 
@@ -283,18 +302,16 @@ function create() {
 
         if (pointer.button == Phaser.Mouse.RIGHT_BUTTON && selectedItem != null) {
             // Deselect
-            selectedItem.hover_img.remove();
-            selectedItem.inventory_li.removeClass("selected");
-            selectedItem = null;
+            deselectItem();
             return;
         }
 
 
-        if (hoveredItem != null) {
+        if (game.hoveredItem != null) {
             if (pointer.button == Phaser.Mouse.RIGHT_BUTTON) {
                 // We're looking at something
                 webSocketBridge.send({command: 'move', x: players[id].sprite.x, y: players[id].sprite.y})
-                game.talk(hoveredItem.item.look_at);
+                game.talk(game.hoveredItem.item.look_at);
 
                 return;
             } else {
@@ -302,9 +319,30 @@ function create() {
                 // We will walk over to the item and then activate it.
                 // for now we assume the point where we want to walk is the bottom centre
                 // of the item
-                x = hoveredItem.item.x;
-                y = hoveredItem.item.y + 10;
-                game.clickedItem = hoveredItem;
+
+                if (game.hoveredItem.type == "player" || game.hoveredItem.type == "character") {
+                    x = game.hoveredItem.item.sprite.x;
+                    y = game.hoveredItem.item.sprite.y;
+                } else {
+                    x = game.hoveredItem.item.x;
+                    y = game.hoveredItem.item.y;
+                }
+                var currentPosition = [players[id].sprite.x, players[id].sprite.y];
+                var targetPosition = [x, y];
+                var possibleCoordinates = calcStraightLine(targetPosition, currentPosition);
+
+                var index = Math.min(possibleCoordinates.length - 1, 20);
+                for (var c = index; c >= 0; c--) {
+                    var coordinate = possibleCoordinates[c]
+                    if (map[coordinate[1]][coordinate[0]] > 0) {
+                        // Can use this one
+                        x = coordinate[0];
+                        y = coordinate[1];
+                        break;
+                    }
+                }
+
+                game.clickedItem = game.hoveredItem;
 
                 if (selectedItem != null) {
                     game.usedItem = selectedItem;
@@ -361,8 +399,8 @@ function render() {
 
 }
 
-function updateCursor() {
-    if (hoveredItem == null) {
+game.updateCursor = () => {
+    if (game.hoveredItem == null) {
         game.canvas.style.cursor = "default";
     } else {
         game.canvas.style.cursor = "pointer";
@@ -383,6 +421,14 @@ function addToInventory(player, item) {
     refreshInventory(player);
 }
 
+function removeFromInventory(player, item) {
+    if (selectedItem.item_id == item) {
+        deselectItem();
+    }
+    delete player.state.items[item];
+    refreshInventory(player);
+}
+
 $("#chat-overlay form").submit((e) => {
     const text = $("#chat-overlay input").val();
 
@@ -399,6 +445,17 @@ $("#chat-overlay form").submit((e) => {
 $("body").on("mousedown", "#inventory li",  (evt) => {
     var $li = $(evt.target).parent();
     var li = $li[0]
+
+    if (inDialogueWith != null) {
+        // We're in a discussion, we can only talk about this object
+        if (evt.which == 3) {
+            return;
+        }
+
+        dialogueSay($li.data('item-id'));
+
+        return;
+    }
 
     if (evt.which == 3) {
         // Right mouse button, just looking
@@ -450,8 +507,18 @@ game.useItem = (item1, item2) => {
     // item1 is inventory
     // item2 is in the world
 
-    // TODO: implement a reaction
-    game.talk("I don't think that will work.");
+    if (item2.type == "player") {
+        if (item2.item.id == id) {
+            // Giving to myself
+            game.talk("What am I supposed to do?");
+            return;
+        }
+        // Giving them the item
+        webSocketBridge.send({command: 'give_item', item: item1.item_id, player: item2.item.id});
+    } else {
+        // TODO: implement a reaction
+        game.talk("I don't think that will work.");
+    }
 }
 
 function useTogetherInInventory(item1, item2) {
@@ -463,3 +530,30 @@ function useTogetherInInventory(item1, item2) {
 }
 
 var selectedItem;
+
+
+$("#menu").on("click", (e) => {
+    // TODO: Check that we're not clicking on an item, if we're not
+    // and e.which == 3 - then deselect the item
+});
+
+var inDialogueWith;
+
+game.beginDialogue = (character) => {
+    inDialogueWith = character;
+    $("#dialogue").show();
+}
+
+function deselectItem() {
+    selectedItem.hover_img.remove();
+    selectedItem.inventory_li.removeClass("selected");
+    selectedItem = null;
+}
+
+function dialogueSay(option) {
+    webSocketBridge.send({command: 'dialogue', option: option, character: inDialogueWith});
+}
+
+$("body").on("mousedown", "#dialogue .option", (el) => {
+    dialogueSay($(el.target).data('option-id'));
+});

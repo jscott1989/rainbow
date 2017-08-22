@@ -2,6 +2,10 @@ from django.db import models
 from django.contrib.postgres.fields import JSONField
 
 
+class World(models.Model):
+    state = JSONField()
+
+
 class Room(models.Model):
     name = models.CharField(max_length=255)
     state = JSONField()

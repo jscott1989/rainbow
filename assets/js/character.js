@@ -1,20 +1,17 @@
 const SMOOTHING_AMOUNT = 100;
-const REACH_DISTANCE = 30;
 
 function distance_between(x1, y1, x2, y2) {
     return Math.sqrt(Math.pow(x1 - x2, 2) + Math.pow(y1 - y2, 2));
 }
 
-class Player {
-    constructor(id, game, sprites, myPlayer, easystar, x, y, state, color) {
-        this.id = id;
+class Character {
+    constructor(game, sprites, easystar, x, y, dialogue, color) {
         this.game = game;
         this.direction = "side";
         this.easystar = easystar;
-        this.myPlayer = myPlayer;
         this.path = null;
         this.pathPointer = 0;
-        this.state = state;
+        this.dialogue = dialogue;
         this.color = color;
         this.sprite = game.add.sprite(x, y, 'guest-sprite', null, sprites);
         this.sprite.anchor.setTo(.5,1);
@@ -26,15 +23,15 @@ class Player {
         this.sprite.animations.add('walk-down', [15,16,17,18,19,20], 6, true);
         this.sprite.animations.play('idle-side');
 
-        this.look_at = "TEMP LOOK AT PLAYER";
+        this.look_at = "TEMP LOOK AT";
 
         this.sprite.inputEnabled = true;
         this.sprite.events.onInputOver.add(() => {
             this.game.hoveredItem = {
-                "type": "player",
+                "type": "character",
                 "item": this,
                 "act": () => {
-                    game.talk("What am I supposed to do?");
+                    game.beginDialogue(this);
                 }
             };
             this.game.updateCursor();
@@ -119,26 +116,6 @@ class Player {
                 this.sprite.y = next.y;
                 this.sprite.animations.play('walk-' + this.direction)
             } else {
-                // Just finished
-                if (this.myPlayer) {
-                    // We're the main player
-                    if (this.game.clickedItem != null) {
-
-                        const distance = distance_between(this.game.clickedItem.item.x, this.game.clickedItem.item.y + 10, this.sprite.x, this.sprite.y);
-
-                        if (distance > REACH_DISTANCE) {
-                            this.game.talk("I can't reach it");
-                        } else {
-                            if (this.game.usedItem != null) {
-                                // Using an item
-                                this.game.useItem(this.game.usedItem, this.game.clickedItem);
-                            } else {
-                                // We clicked an item
-                                this.game.clickedItem.act();
-                            }
-                        }
-                    }
-                }
                 this.path = null;
             }
         } else {
@@ -181,4 +158,4 @@ class Player {
     }
 }
 
-module.exports = Player;
+module.exports = Character;

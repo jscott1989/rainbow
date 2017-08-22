@@ -30,6 +30,53 @@
           target_y: 540
           enter: bottom
           look_at: It's just a door...
+      characters:
+        trump:
+          name: Donald trump
+          x: 600
+          y: 280
+          color: #FF0000
+          dialogue:
+            introduction:
+              Hello I'm Donald Trump
+            options:
+              hello:
+                requires:
+                  - "!hello-donald"
+                text:
+                  - Hello
+                response:
+                  - Hello to you too
+                sets:
+                  - hello-donald
+              abc1:
+                requires:
+                  - "!abc1"
+                text:
+                  - ABC1
+                response:
+                  - DEF?
+                sets:
+                  - abc1
+              def1:
+                requires:
+                  - abc1
+                  - "!def"
+                text:
+                  - DEF
+                response:
+                  - Exactly!
+                sets:
+                  - def
+              private:
+                requires:
+                  - "!.private"
+                text:
+                  - This is just for me
+                response:
+                  - And nobody else will see it
+                sets:
+                  - .private
 
 - model: rainbow.Room
   pk: 2

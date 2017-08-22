@@ -30,6 +30,18 @@ body {
     float: left;
 }
 
+#game-filter {
+    pointer-events: none;
+    // TODO: This color should change as the timer expires
+    background: blue;
+    width: 800px;
+    height: 600px;
+    position: absolute;
+    top: 0px;
+    left: 0px;
+    opacity: 0.1;
+}
+
 #menu {
     float: left;
     width: 224px;
@@ -70,6 +82,10 @@ body {
     li {
         float: left;
     }
+
+    img {
+        cursor: pointer;
+    }
 }
 
 #inventory li.selected img {
@@ -78,4 +94,38 @@ body {
 
 #hover_img {
     position: absolute;
+}
+
+#dialogue {
+    display: none;
+    position: absolute;
+    top: 0px;
+    left: 0px;
+    width: 800px;
+    height: 600px;
+
+    #dialogue-controls {
+        position: absolute;
+        left: 0px;
+        bottom: 0px;
+        height: 70px;
+        width: 800px;
+        background: rgba(0, 0, 0, 0.5);
+
+        ul, li {
+            margin: 0px;
+            padding: 0px;
+            list-style: none;
+        }
+
+        li {
+            float: left;
+            background: green;
+            width: 64px;
+            height: 64px;
+            cursor: pointer;
+            margin-left: 10px;
+            margin-top: 3px;
+        }
+    }
 }
