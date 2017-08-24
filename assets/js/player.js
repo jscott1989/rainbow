@@ -8,6 +8,7 @@ function distance_between(x1, y1, x2, y2) {
 class Player {
     constructor(id, game, sprites, myPlayer, easystar, x, y, state, color) {
         this.id = id;
+        this.name = state.name;
         this.game = game;
         this.direction = "side";
         this.easystar = easystar;
@@ -37,6 +38,7 @@ class Player {
                     game.talk("What am I supposed to do?");
                 }
             };
+            this.game.updateHoveredItemText();
             this.game.updateCursor();
         });
 
@@ -44,8 +46,11 @@ class Player {
             if (this.game.hoveredItem != null && game.hoveredItem.item == this) {
                 this.game.hoveredItem = null;
             }
+            this.game.updateHoveredItemText();
             this.game.updateCursor();
         });
+
+        sprites.add(this.sprite);
     }
 
     update() {
@@ -54,6 +59,9 @@ class Player {
             if (this.chatTextTimeout <= 0) {
                 this.chatText.destroy();
                 this.chatText = null;
+                if (this.chatTextCallback != null) {
+                    this.chatTextCallback();
+                }
             } else {
                 this.chatText.x = this.sprite.x;
                 this.chatText.y = this.sprite.y - 50 - this.chatText.height * 0.5;
@@ -162,7 +170,7 @@ class Player {
         this.sprite.destroy();
     }
 
-    chat(text) {
+    chat(text, callback) {
         if (this.chatText != null) {
             this.chatText.destroy();
         }
@@ -178,6 +186,7 @@ class Player {
             });
         this.chatText.anchor.setTo(0.5);
         this.chatTextTimeout = 3000;
+        this.chatTextCallback = callback;
     }
 }
 

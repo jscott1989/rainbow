@@ -6,11 +6,13 @@
       items:
         thing-test:
           type: thing
+          interactable: True
           x: 500
           y: 320
           enter: bottom
           holdable: True
           look_at: I don't really know what it is. It's kind of red.
+          name: Red Thing
         thing-test2:
           type: thing2
           x: 300
@@ -18,6 +20,7 @@
           enter: bottom
           holdable: True
           look_at: I don't really know what it is. It's kind of yellow.
+          name: Yellow Thing
       hotspots:
         door1:
           type: door
@@ -30,53 +33,54 @@
           target_y: 540
           enter: bottom
           look_at: It's just a door...
+          name: Door
       characters:
         trump:
           name: Donald trump
           x: 600
-          y: 280
-          color: #FF0000
+          y: 260
+          color: "#FF0000"
           dialogue:
-            introduction:
-              Hello I'm Donald Trump
-            options:
-              hello:
-                requires:
-                  - "!hello-donald"
-                text:
-                  - Hello
-                response:
-                  - Hello to you too
-                sets:
-                  - hello-donald
-              abc1:
-                requires:
-                  - "!abc1"
-                text:
-                  - ABC1
-                response:
-                  - DEF?
-                sets:
-                  - abc1
-              def1:
-                requires:
-                  - abc1
-                  - "!def"
-                text:
-                  - DEF
-                response:
-                  - Exactly!
-                sets:
-                  - def
-              private:
-                requires:
-                  - "!.private"
-                text:
-                  - This is just for me
-                response:
-                  - And nobody else will see it
-                sets:
-                  - .private
+            hello:
+              requires:
+                - "!hello-donald"
+              text:
+                - Hello
+                - Who are you?
+              response:
+                - I'm Donald J Trump
+              sets:
+                - hello-donald
+            trump:
+              requires:
+                - "hello-donald"
+                - "!hello-donald2"
+              text:
+                - Really?
+                - You're Donald Trump?
+              response:
+                - Yes. Why?
+              sets:
+                - hello-donald2
+            rocket:
+              requires:
+                - "!saidrocket"
+              text:
+                - I saw a rocket over there
+                - What happened to it?
+              response:
+                - Don't worry about it
+              sets:
+                - saidrocket
+            thing-test:
+              isitem: True
+              response:
+                - That's a nice red thing you got there
+                - How much do you want for it?
+            default:
+              response:
+                - I really don't know what to say about that...
+
 
 - model: rainbow.Room
   pk: 2

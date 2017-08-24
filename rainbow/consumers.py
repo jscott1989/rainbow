@@ -63,7 +63,7 @@ def ws_connect(message, id):
             "x": 279,
             "y": 310,
             "color": "#ffffff",
-            "state": {"items": {}}
+            "state": {"items": {}, "name": "Test Player"}
         }
     )
 
@@ -89,6 +89,7 @@ def ws_connect(message, id):
         })
     })
 
+    Group("all").add(message.reply_channel)
     Group(player.player_id).add(message.reply_channel)
     Group(player.room.name).add(message.reply_channel)
     welcome_to_room(player.room, message.reply_channel)
@@ -211,9 +212,51 @@ def ws_message(message):
     elif content["command"] == "dialogue":
         player = Player.objects.get(player_id=player_id)
         # Update the character according to the dialogue
-        # TODO
+        if content["option"] not in player.room.state["characters"][content["character"]]["dialogue"]:
+            Group(player.room.name).send({
+                "text": json.dumps({
+                    "command": "dialogue",
+                    "player":  {
+                        "id": player_id
+                    },
+                    "character": content["character"],
+                    "option": "default"
+                })
+            })
+            return
+        option = player.room.state["characters"][content["character"]]["dialogue"][content["option"]]
+
+        for s in option.get("sets", []):
+            # Set variables and communicate them to the game
+            new_value = True
+            if s.startswith("!"):
+                new_value = False
+                s = s[1:]
+            if s.startswith("."):
+                # Setting player state
+                s = s[1:]
+                player.state[s] = new_value
+                player.save()
+                message.reply_channel.send({
+                    "text": json.dumps({
+                        "command": "set_state",
+                        "state": player.state
+                    })
+                })
+            else:
+                # Setting world state
+                world = get_world()
+                world.state[s] = new_value
+                world.save()
+                Group("all").send({
+                    "text": json.dumps({
+                        "command": "set_world_state",
+                        "state": world.state
+                    })
+                })
 
         # Tell everyone in the room about the dialogue
+        # TODO: For some reason this sometimes doesn't work :/
         Group(player.room.name).send({
             "text": json.dumps({
                 "command": "dialogue",

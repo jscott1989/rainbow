@@ -5,7 +5,9 @@ function distance_between(x1, y1, x2, y2) {
 }
 
 class Character {
-    constructor(game, sprites, easystar, x, y, dialogue, color) {
+    constructor(id, name, game, sprites, easystar, x, y, dialogue, color) {
+        this.id = id;
+        this.name = name;
         this.game = game;
         this.direction = "side";
         this.easystar = easystar;
@@ -34,6 +36,7 @@ class Character {
                     game.beginDialogue(this);
                 }
             };
+            this.game.updateHoveredItemText();
             this.game.updateCursor();
         });
 
@@ -41,8 +44,11 @@ class Character {
             if (this.game.hoveredItem != null && game.hoveredItem.item == this) {
                 this.game.hoveredItem = null;
             }
+            this.game.updateHoveredItemText();
             this.game.updateCursor();
         });
+
+        sprites.add(this.sprite);
     }
 
     update() {
@@ -51,6 +57,9 @@ class Character {
             if (this.chatTextTimeout <= 0) {
                 this.chatText.destroy();
                 this.chatText = null;
+                if (this.chatTextCallback != null) {
+                    this.chatTextCallback();
+                }
             } else {
                 this.chatText.x = this.sprite.x;
                 this.chatText.y = this.sprite.y - 50 - this.chatText.height * 0.5;
@@ -127,7 +136,6 @@ class Character {
         const self = this;
         this.easystar.findPath(this.sprite.x, this.sprite.y, x, y, function( path ) {
             if (path === null) {
-                console.log("PATH NOT FOUND");
             } else {
                 self.path = path;
                 self.pathPointer = 0;
@@ -139,7 +147,7 @@ class Character {
         this.sprite.destroy();
     }
 
-    chat(text) {
+    chat(text, callback) {
         if (this.chatText != null) {
             this.chatText.destroy();
         }
@@ -155,6 +163,46 @@ class Character {
             });
         this.chatText.anchor.setTo(0.5);
         this.chatTextTimeout = 3000;
+        this.chatTextCallback = callback;
+    }
+
+    haveDialogue(player, option) {
+        
+        this.inDialogue = true;
+        this.game.refreshDialogueInterface();
+        var textToSayPointer = 0;
+        var respondPointer = 0;
+
+        var respond = () => {
+            if (respondPointer >= this.dialogue[option]["response"].length) {
+                this.inDialogue = false;
+                this.game.refreshDialogueInterface();
+            } else {
+                this.chat(this.dialogue[option]["response"][respondPointer], () => {
+                    respondPointer += 1;
+                    respond();
+                })
+            }
+        }
+
+        var sayText = () => {
+            player.chat(this.dialogue[option]["text"][textToSayPointer], () => {
+                textToSayPointer += 1;
+
+                if (textToSayPointer >= this.dialogue[option]["text"].length) {
+                    // Move on
+                    respond();
+                } else {
+                    sayText();
+                }
+            })
+        }
+
+        if (this.dialogue[option].text != null && this.dialogue[option]["text"].length > 0) {
+            sayText();
+        } else {
+            respond();
+        }
     }
 }
 

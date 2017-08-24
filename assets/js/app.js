@@ -58,7 +58,6 @@ var players = {};
 var characters = {};
 var easystar = new EasyStar.js();
 var sprites;
-var items;
 var hotspots;
 var items_by_key;
 var hotspots_by_key;
@@ -78,6 +77,34 @@ game.usedItem = null;
 
 game.talk = (text) => {
     webSocketBridge.send({command: 'chat', text: text});
+}
+
+game.updateHoveredItemText = () => {
+    if (game.hoveredItemText != null) {
+        game.hoveredItemText.destroy();
+        game.hoveredItemText = null;
+    }
+
+    if (game.hoveredItem != null) {
+        var sprite = game.hoveredItem.sprite;
+        if (!sprite) {
+            sprite = game.hoveredItem.item.sprite;
+        }
+
+        console.log(game.hoveredItem);
+
+        // Create text and position it under the item
+        game.hoveredItemText = game.add.text(
+            sprite.x,
+            sprite.y + 30, game.hoveredItem.item.name, {
+                font: "18px Press Start 2P",
+                fill: "#FFFFFF",
+                align: "center",
+                wordWrap: true,
+                wordWrapWidth: 300
+            });
+        game.hoveredItemText.anchor.setTo(0.5);
+    }
 }
 
 function preload() {
@@ -139,13 +166,11 @@ function loadRoom(room) {
     var background = game.add.tileSprite(0, 0, BG_WIDTH, BG_HEIGHT, room.name + '-background');
 
     hotspots = game.add.group();
-    items = game.add.group();
     items_by_key = {};
     hotspots_by_key = {};
     sprites = game.add.group();
 
     game.add.tileSprite(0, 0, BG_WIDTH, BG_HEIGHT, room.name + '-foreground');
-
 
     // Load items
     for (var key in room.state.items) {
@@ -172,31 +197,35 @@ function createItem(item) {
     const ITEM_HEIGHT = 32;
     var itemSprite = game.add.tileSprite(item.x, item.y, ITEM_WIDTH, ITEM_HEIGHT, 'item-' + item.type);
     itemSprite.anchor.setTo(.5,1);
-    itemSprite.inputEnabled = true;
-    
-    itemSprite.events.onInputOver.add(() => {
-        game.hoveredItem = {
-            "type": "item",
-            "item": item,
-            "sprite": itemSprite,
-            "act": () => {
-                if (item.holdable) {
-                    webSocketBridge.send({command: 'pick_up_item', item: item.id});
-                    addToInventory(players[id], item)
+
+    if (item.interactable) {
+        itemSprite.inputEnabled = true;
+        itemSprite.events.onInputOver.add(() => {
+            game.hoveredItem = {
+                "type": "item",
+                "item": item,
+                "sprite": itemSprite,
+                "act": () => {
+                    if (item.holdable) {
+                        webSocketBridge.send({command: 'pick_up_item', item: item.id});
+                        addToInventory(players[id], item)
+                    }
                 }
+            };
+            game.updateHoveredItemText()
+            game.updateCursor();
+        });
+
+        itemSprite.events.onInputOut.add(() => {
+            if (game.hoveredItem != null && game.hoveredItem.item == item) {
+                game.hoveredItem = null;
             }
-        };
-        game.updateCursor();
-    });
+            game.updateHoveredItemText()
+            game.updateCursor();
+        });
+    }
 
-    itemSprite.events.onInputOut.add(() => {
-        if (game.hoveredItem != null && game.hoveredItem.item == item) {
-            game.hoveredItem = null;
-        }
-        game.updateCursor();
-    });
-
-    items.add(itemSprite);
+    sprites.add(itemSprite);
     items_by_key[item.id] = {"item": item, "sprite": itemSprite};
 }
 
@@ -223,7 +252,7 @@ function createHotspot(hotspot) {
 
     hotspotSprite.events.onInputOver.add(() => {
         game.hoveredItem = {
-            "type": hotspot,
+            "type": "hotspot",
             "item": hotspot,
             "sprite": hotspotSprite,
             "act": () => {
@@ -233,6 +262,7 @@ function createHotspot(hotspot) {
                 }
             }
         };
+        game.updateHoveredItemText()
         game.updateCursor();
     });
 
@@ -240,6 +270,7 @@ function createHotspot(hotspot) {
         if (game.hoveredItem != null && game.hoveredItem.item == hotspot) {
             game.hoveredItem = null;
         }
+        game.updateHoveredItemText()
         game.updateCursor();
     });
 
@@ -249,7 +280,7 @@ function createHotspot(hotspot) {
 
 function createCharacter(character) {
     console.log("Create character ", character);
-    characters[character.id] = new Character(game, sprites, easystar, character.x, character.y, character.dialogue, character.color);
+    characters[character.id] = new Character(character.id, character.name, game, sprites, easystar, character.x, character.y, character.dialogue, character.color);
 }
 
 function create() {
@@ -258,6 +289,7 @@ function create() {
     // Create connection to server
     webSocketBridge.connect('/ws/' + id);
     webSocketBridge.listen((action) => {
+        console.log(action);
         if (action.command == "chat" && roomLoaded) {
             players[action.player.id].chat(action.text);
         } else if (action.command == "add_player" && roomLoaded) {
@@ -268,7 +300,7 @@ function create() {
 
             if (action.player.id == id) {
                 game.camera.follow(players[action.player.id].sprite);
-                refreshInventory(players[action.player.id]);
+                game.refreshInventory();
             }
         } else if (action.command == "remove_player" && roomLoaded) {
             players[action.player.id].destroy();
@@ -276,19 +308,24 @@ function create() {
         } else if (action.command == "remove_item" && roomLoaded) {
             items_by_key[action.item].sprite.destroy();
             delete items_by_key[action.item];
-            if (game.hoveredItem.item.id == action.item) {
+            if (game.hoveredItem != null && game.hoveredItem.item.id == action.item) {
                 game.hoveredItem = null;
+                game.updateHoveredItemText()
             }
         } else if (action.command == "move" && roomLoaded) {
             players[action.player.id].moveTo(action.x, action.y);
         } else if (action.command == "load_room") {
             loadRoom(action.room);
+        } else if (action.command == "set_state") {
+            players[id].state = action.state;
         } else if (action.command == "set_world_state") {
             worldState = action.state;
         } else if (action.command == "remove_item_from_inventory") {
             removeFromInventory(players[id], action.item);
         } else if (action.command == "add_item_to_inventory") {
             addToInventory(players[id], action.item);
+        } else if (action.command == "dialogue") {
+            characters[action.character].haveDialogue(players[action.player.id], action.option);
         }
     });
 
@@ -384,10 +421,29 @@ function removeKeyBindings() {
 }
 
 
+// const SORT_REFRESH = 1000;
+// var sortTimeout = 0;
+
 function update() {
     for (var player in players) {
         players[player].update();
     }
+
+    for (var character in characters) {
+        characters[character].update();
+    }
+
+    if (sprites != null) {
+        sprites.sort("y");
+    }
+    // TODO: If there are performance issues, constantly sorting
+    // might be one of them. Check here first.
+    // sortTimeout -= this.game.time.elapsed;
+    // if (sortTimeout <= 0) {
+    //     sprites.sort("y");
+    //     sortTimeout = SORT_REFRESH;
+    // }
+
 
     easystar.calculate();
 }
@@ -409,16 +465,23 @@ game.updateCursor = () => {
 
 var inventory_list = $("#inventory ul");
 
-function refreshInventory(player) {
+game.refreshInventory = () => {
+    var player = players[id];
     inventory_list.html("");
     Object.keys(player.state.items).forEach((key) => {
         inventory_list.append($("<li data-item-id=\"" + player.state.items[key].id + "\"><img src=\"/static/img/items/" + player.state.items[key].type + "-inventory.png\"></li>"));
     });
+
+    if (inDialogueWith && inDialogueWith.inDialogue) {
+        $("#menu-disabler").show();
+    } else {
+        $("#menu-disabler").hide();
+    }
 }
 
 function addToInventory(player, item) {
     player.state.items[item.id] = item;
-    refreshInventory(player);
+    game.refreshInventory();
 }
 
 function removeFromInventory(player, item) {
@@ -426,7 +489,7 @@ function removeFromInventory(player, item) {
         deselectItem();
     }
     delete player.state.items[item];
-    refreshInventory(player);
+    game.refreshInventory();
 }
 
 $("#chat-overlay form").submit((e) => {
@@ -532,28 +595,112 @@ function useTogetherInInventory(item1, item2) {
 var selectedItem;
 
 
-$("#menu").on("click", (e) => {
-    // TODO: Check that we're not clicking on an item, if we're not
-    // and e.which == 3 - then deselect the item
+$("#menu").on("mousedown", (e) => {
+    if (e.which == 3 && $(e.target).is("#menu")) {
+        // Right click, deselect
+        deselectItem();
+    };
 });
 
 var inDialogueWith;
 
-game.beginDialogue = (character) => {
-    inDialogueWith = character;
+function requirementMet(requirement) {
+    var inverted = false;
+
+    if (requirement[0] == "!") {
+        // We're inverting
+        inverted = true;
+        requirement = requirement.substr(1)
+    }
+    
+    var source_of_truth = worldState;
+
+    if (requirement[0] == ".") {
+        // Looking individually
+        source_of_truth = players[id].state;
+        requirement = requirement.substr(1)
+    }
+
+    var t = source_of_truth[requirement] || false;
+
+    if (inverted) {
+        return !t;
+    }
+
+    return t;
+}
+
+function requirementsMet(requirements) {
+    for (var r in requirements) {
+        if (!(requirementMet(requirements[r]))) {
+            return false;
+        }
+    }
+    return true;
+}
+
+game.refreshDialogueInterface = () => {
+    if (!inDialogueWith) {
+        $("#dialogue").hide();
+        game.refreshInventory();
+        return;
+    }
+
+    $("#dialogue ul").html("");
+
+    // Decide what we are able to say
+    Object.keys(inDialogueWith.dialogue).forEach((k) => {
+        if (k != "default" && !inDialogueWith.dialogue[k].isitem && requirementsMet(inDialogueWith.dialogue[k].requires)) {
+            $("#dialogue ul").append("<li class=\"option\" data-option-id=\"" + k + "\"><img src=\"/static/img/topics/" + k + ".png\"></li>")
+        }
+    });
+
+    $("#dialogue ul").append("<li class=\"option\" data-option-id=\"bye\"><img src=\"/static/img/topics/bye.png\"></li>")
+
     $("#dialogue").show();
+
+    if (inDialogueWith.inDialogue) {
+        $("#dialogue-disabler").show();
+    } else {
+        $("#dialogue-disabler").hide();
+    }
+
+    game.refreshInventory();
+}
+
+game.beginDialogue = (character) => {
+    game.hoveredItem = null;
+    game.updateHoveredItemText()
+    inDialogueWith = character;
+
+    game.refreshDialogueInterface();
 }
 
 function deselectItem() {
-    selectedItem.hover_img.remove();
-    selectedItem.inventory_li.removeClass("selected");
-    selectedItem = null;
+    if (selectedItem != null) {
+        selectedItem.hover_img.remove();
+        selectedItem.inventory_li.removeClass("selected");
+        selectedItem = null;
+    }
 }
 
 function dialogueSay(option) {
-    webSocketBridge.send({command: 'dialogue', option: option, character: inDialogueWith});
+    webSocketBridge.send({command: 'dialogue', option: option, character: inDialogueWith.id});
 }
 
 $("body").on("mousedown", "#dialogue .option", (el) => {
-    dialogueSay($(el.target).data('option-id'));
+    var el = $(el.target);
+    if (!el.is(".option")) {
+        el = el.parent();
+    }
+
+    var option_id = el.data('option-id');
+    
+    if (option_id == "bye") {
+        // Exit dialogue
+        inDialogueWith = null;
+        game.refreshDialogueInterface();
+    } else {
+        dialogueSay(option_id);
+    }
 });
