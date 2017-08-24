@@ -17,6 +17,7 @@ class Player {
         this.pathPointer = 0;
         this.state = state;
         this.color = color;
+        // TODO: Allow different sprites for players
         this.sprite = game.add.sprite(x, y, 'guest-sprite', null, sprites);
         this.sprite.anchor.setTo(.5,1);
         this.sprite.animations.add('idle-side', [0], 1, true);

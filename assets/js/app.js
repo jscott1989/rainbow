@@ -120,6 +120,9 @@ function preload() {
         game.load.image('item-' + item, 'static/img/items/' + item + '.png');
     });
 
+
+    // Add additional sprites here
+
     game.load.spritesheet('guest-sprite', 'static/img/guest-sprite.png', 32, 64);
 }
 
@@ -130,15 +133,14 @@ var map;
 
 function loadRoom(room) {
     // TODO: Probably have to clear the previous room if we're entering a new one
-
-    // TODO: Allow variable background sizes
-    const BG_WIDTH = 2734;
-    const BG_HEIGHT = 600;
+    var img = game.cache.getImage(room.name + '-mask');
+    const BG_WIDTH = img.width;
+    const BG_HEIGHT = img.height;
 
     game.world.setBounds(0, 0, BG_WIDTH, BG_HEIGHT);
 
     var bmd = game.make.bitmapData(BG_WIDTH, BG_HEIGHT);
-    bmd.draw(game.cache.getImage(room.name + '-mask'), 0, 0);
+    bmd.draw(img, 0, 0);
     bmd.update();
     var data = bmd.data;
 
@@ -193,8 +195,9 @@ function loadRoom(room) {
 }
 
 function createItem(item) {
-    const ITEM_WIDTH = 32;
-    const ITEM_HEIGHT = 32;
+    var img = game.cache.getImage('item-' + item.type);
+    const ITEM_WIDTH = img.width;
+    const ITEM_HEIGHT = img.height;
     var itemSprite = game.add.tileSprite(item.x, item.y, ITEM_WIDTH, ITEM_HEIGHT, 'item-' + item.type);
     itemSprite.anchor.setTo(.5,1);
 
@@ -504,6 +507,24 @@ $("#chat-overlay form").submit((e) => {
     $("#chat-overlay").hide();
 });
 
+$("body").on("mouseenter", "#inventory li",  (evt) => {
+    var inventory_label = $("#inventory-label")
+    var target = $(evt.target);
+
+    var item_id = target.parent().data("item-id");
+
+    inventory_label.text(players[id].state.items[item_id].name);
+    var pos = target.offset();
+    inventory_label.css({
+        left: ((pos.left + target.width() / 2) - inventory_label.width() / 2) + "px",
+        top: (pos.top + target.height() + 10) + "px"
+    });
+    inventory_label.show();
+});
+
+$("body").on("mouseleave", "#inventory li",  (evt) => {
+    $("#inventory-label").hide();
+});
 
 $("body").on("mousedown", "#inventory li",  (evt) => {
     var $li = $(evt.target).parent();
@@ -704,3 +725,19 @@ $("body").on("mousedown", "#dialogue .option", (el) => {
         dialogueSay(option_id);
     }
 });
+
+
+
+
+
+function alertSomething() {
+    alert("I AM ALERTING...");
+}
+
+function alertSomethingElse() {
+    alert("I AM ALERTING...");
+}
+
+function alertSomethingWorld() {
+    alert("I AM ALERTING...");
+}

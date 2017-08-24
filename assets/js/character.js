@@ -15,6 +15,7 @@ class Character {
         this.pathPointer = 0;
         this.dialogue = dialogue;
         this.color = color;
+        // TODO: Allow different sprites for characters
         this.sprite = game.add.sprite(x, y, 'guest-sprite', null, sprites);
         this.sprite.anchor.setTo(.5,1);
         this.sprite.animations.add('idle-side', [0], 1, true);
